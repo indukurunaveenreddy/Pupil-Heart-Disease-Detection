@@ -47,7 +47,16 @@ jobs:
       run: |
         PORT=5001 python app.py &
         PID=$!
-        sleep 5
-        curl --fail http://127.0.0.1:5001/ || exit 1
-        echo "[PASS] Web server responded 200 OK"
-        kill $PID
+        echo "Waiting for Flask to start (model loading may take up to 60s)..."
+        for i in $(seq 1 30); do
+          if curl --silent --fail http://127.0.0.1:5001/ > /dev/null 2>&1; then
+            echo "[PASS] Web server responded 200 OK (attempt $i)"
+            kill $PID
+            exit 0
+          fi
+          echo "  Attempt $i/30 - not ready yet, waiting 2s..."
+          sleep 2
+        done
+        echo "[FAIL] Flask did not start within 60 seconds"
+        kill $PID 2>/dev/null || true
+        exit 1
