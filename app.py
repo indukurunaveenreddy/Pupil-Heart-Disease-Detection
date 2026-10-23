@@ -1,4 +1,9 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['TF_NUM_INTRAOP_THREADS'] = '1'
+os.environ['TF_NUM_INTEROP_THREADS'] = '1'
+
 import sqlite3
 from uuid import uuid4
 
@@ -12,9 +17,14 @@ import base64
 import pandas as pd
 import seaborn as sns
 import cv2
+cv2.setNumThreads(1)
 import random as rand
 from PIL import Image
 import matplotlib.pyplot as plt
+import tensorflow as tf
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+
 from tensorflow.keras.applications import MobileNetV3Small
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import *
@@ -227,7 +237,7 @@ def predict_frame():
         if loaded_model is None:
             return jsonify({'success': False, 'error': 'Model not loaded'}), 500
 
-        result = loaded_model.predict(x, verbose=0)
+        result = loaded_model(x, training=False).numpy()
         labels_pred = int(np.argmax(result, axis=1)[0])
         predicted_class_folder = CLASS_NAMES[labels_pred]
         prediction = classes_map.get(predicted_class_folder, predicted_class_folder)
@@ -325,7 +335,7 @@ def upload():
             x1 = np.array([resized_arr_1])
             x1 = preprocess_input(x1)
 
-            result = model.predict(x1)
+            result = model(x1, training=False).numpy()
             labels_pred = np.argmax(result, axis=1)
             predicted_class_folder = CLASS_NAMES[labels_pred[0]]
             prediction = classes_map.get(predicted_class_folder, predicted_class_folder)
