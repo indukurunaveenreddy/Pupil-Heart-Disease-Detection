@@ -44,6 +44,9 @@ An AI-powered web application that identifies heart disease risk through non-inv
 ├── sample_images/              # Test pupil images for demonstration
 │   ├── heart_risk/
 │   └── no_heart_risk/
+├── images/                     # Runtime upload directory (ephemeral)
+├── Procfile                    # Gunicorn start command for Render/Heroku
+├── render.yaml                 # Render.com deployment configuration
 ├── requirements.txt            # Python dependencies
 └── README.md
 ```
@@ -77,6 +80,11 @@ python3 app.py
 Open your browser and navigate to:
 **[http://127.0.0.1:5001](http://127.0.0.1:5001)**
 
+### 5. Production Server (Gunicorn)
+```bash
+gunicorn app:app --bind 0.0.0.0:5001 --workers 1 --timeout 120
+```
+
 ---
 
 ## 📸 How to Use
@@ -90,13 +98,60 @@ Open your browser and navigate to:
 
 ---
 
+## ☁️ Deploy on Render.com
+
+This project is pre-configured for one-click deployment on [Render](https://render.com).
+
+### Step-by-step Render Deployment
+
+1. **Push to GitHub** (see Git commands below)
+2. Go to [https://dashboard.render.com](https://dashboard.render.com) → **New** → **Web Service**
+3. Connect your GitHub account and select the `Pupil-Heart-Disease-Detection` repository
+4. Render will auto-detect `render.yaml` and pre-fill settings:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120`
+   - **Runtime**: Python 3.11
+   - **Plan**: Free
+5. Click **Create Web Service** — Render will build and deploy automatically
+
+### ⚠️ Important: SQLite on Render (Ephemeral Filesystem)
+
+Render's free tier uses an **ephemeral filesystem** — the `users.db` SQLite database is **recreated on every deploy** (registered users will be lost). This is expected behavior on free tier.
+
+**Options to persist data:**
+- **Render Disk** (paid): Add a persistent disk mounted at `/data` and set `DB_PATH=/data/users.db`
+- **Migrate to PostgreSQL**: Use Render's free PostgreSQL addon and switch to `psycopg2`
+- **For demo/testing**: SQLite is fine — the app auto-creates the DB on startup
+
+---
+
+## 🔧 Git Commands — Push to GitHub
+
+```bash
+# Check current status
+git status
+
+# Stage all changes
+git add .
+
+# Commit
+git commit -m "deploy: fix .gitignore, update requirements for production"
+
+# Push to GitHub
+git push origin main
+```
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Deep Learning**: TensorFlow 2.x, Keras 3, MobileNetV3
 - **Computer Vision**: OpenCV (`cv2`), PIL
 - **Backend**: Python 3, Flask, SQLite3
+- **Production Server**: Gunicorn
 - **Frontend**: HTML5, Vanilla JavaScript, CSS3, Bootstrap 5, FontAwesome
 - **Data & Plotting**: NumPy, Pandas, Matplotlib, Seaborn
+- **Deployment**: Render.com, GitHub Actions CI/CD
 
 ---
 

@@ -7,19 +7,48 @@ __pycache__/
 env/
 venv/
 .venv/
+*.egg-info/
+dist/
+build/
+
+# Environment variables / secrets
+.env
+.env.*
+*.env
 
 # Datasets and Large Binary Models
 Dataset/
 alg/ResNet501.h5
 
-# Databases and user uploads
+# Databases
 users.db
-images/*.jpg
-images/*.jpeg
-images/*.png
+*.db
+*.sqlite3
+
+# User uploaded images (keep folder with .gitkeep only)
+images/*
 !images/.gitkeep
+
+# Static generated charts
+images/prediction_chart.png
+
+# Cloudflared / tunnels
+cloudflared
+cloudflared.exe
+*.deb
+*.rpm
 
 # IDE and OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
 .idea/
 .vscode/
+
+# Logs
+*.log
+nohup.out
+
