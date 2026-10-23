@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pupil Heart Disease Identification - Upload & Camera</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #f4f7fc; }
+
+        .navbar { background: linear-gradient(90deg, #0f2027, #203a43, #2c5364); }
+        .navbar-brand { font-weight: 700; color: #fff !important; }
+        .nav-link { color: #fff !important; margin-left: 15px; }
+        .nav-link:hover { color: #00d4ff !important; }
+
+        .hero { background: url('static/img/hero-slider/g2.jpg') center/cover no-repeat; min-height: 100vh; display: flex; align-items: center; }
+        .overlay { background: rgba(0,0,0,0.65); width: 100%; padding: 60px 0; }
+
+        .upload-card {
+            background: #fff;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            font-weight: 600;
+            color: #475569;
+            padding: 10px 20px;
+        }
+
+        .nav-pills .nav-link.active {
+            background: #00c6ff;
+            color: #fff;
+        }
+
+        .upload-box {
+            border: 2px dashed #cbd5e1;
+            border-radius: 14px;
+            padding: 35px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #f8fafc;
+        }
+
+        .upload-box:hover {
+            border-color: #00c6ff;
+            background: #f0f9ff;
+        }
+
+        .camera-viewport {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            background: #000;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #uploadCameraVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .camera-reticle {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border: 2px dashed #00c6ff;
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 220px;
+            margin-top: 15px;
+            border-radius: 12px;
+            object-fit: contain;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-custom {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            padding: 12px;
+        }
+
+        .btn-custom:hover {
+            background: linear-gradient(135deg, #0072ff, #0051b3);
+            color: #fff;
+        }
+
+        footer { background: #0f2027; color: white; padding: 15px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="#"><i class="fas fa-heartbeat text-danger me-2"></i>Pupil Heart AI</a>
+        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="nav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('userhome') }}">Home</a></li>
+                <li class="nav-item"><a class="nav-link active" href="{{ url_for('upload1') }}">Upload Image</a></li>
+                <li class="nav-item"><a class="nav-link text-info fw-semibold" href="{{ url_for('live') }}"><i class="fas fa-video me-1"></i>Live Stream</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Section -->
+<section class="hero">
+    <div class="overlay">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-7">
+                    <div class="upload-card">
+                        <div class="text-center mb-4">
+                            <h3 class="fw-bold">Pupil Image Diagnostics</h3>
+                            <p class="text-muted">Choose your preferred capture method: upload an image file or take a live camera snapshot.</p>
+                        </div>
+
+                        <!-- Mode Switcher Tabs -->
+                        <ul class="nav nav-pills nav-fill mb-4" id="modeTabs">
+                            <li class="nav-item">
+                                <button class="nav-link active" id="tab-upload" data-bs-toggle="pill" data-bs-target="#panel-upload" onclick="stopCamera()">
+                                    <i class="fas fa-file-upload me-2"></i>Upload File
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="tab-camera" data-bs-toggle="pill" data-bs-target="#panel-camera" onclick="startCamera()">
+                                    <i class="fas fa-camera me-2"></i>Live Camera
+                                </button>
+                            </li>
+                        </ul>
+
+                        <form id="upload-form" action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
+
+                            <div class="tab-content">
+                                <!-- Tab 1: File Upload -->
+                                <div class="tab-pane fade show active" id="panel-upload">
+                                    <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                                        <i class="fas fa-cloud-upload-alt fa-3x mb-2 text-primary"></i>
+                                        <h6 class="fw-bold mb-1">Click or Drag Image Here</h6>
+                                        <small class="text-muted">Supports JPG, PNG, JPEG formats</small>
+                                        <input type="file" id="fileInput" name="file" accept="image/*" hidden onchange="previewImage(event)">
+                                    </div>
+                                    <div class="text-center">
+                                        <img id="filePreview" class="preview-img d-none" />
+                                    </div>
+                                </div>
+
+                                <!-- Tab 2: Live Camera Snapshot -->
+                                <div class="tab-pane fade" id="panel-camera">
+                                    <div id="cameraActiveView">
+                                        <div class="camera-viewport mb-3">
+                                            <video id="uploadCameraVideo" autoplay playsinline muted></video>
+                                            <div class="camera-reticle"></div>
+                                        </div>
+                                        <div class="text-center mb-2">
+                                            <button type="button" class="btn btn-primary btn-sm px-4" onclick="snapPhoto()">
+                                                <i class="fas fa-camera me-1"></i> Capture Pupil Photo
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="cameraCapturedView" class="d-none text-center">
+                                        <img id="cameraPreview" class="preview-img mb-2" />
+                                        <div>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="retakePhoto()">
+                                                <i class="fas fa-redo me-1"></i> Retake Photo
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <canvas id="cameraCanvas" style="display:none;"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Model Selector -->
+                            <div class="mt-4">
+                                <label class="form-label fw-semibold">Diagnostic Model</label>
+                                <select name="alg" class="form-select" required>
+                                    <option value="1" selected>MobileNetV3 Deep Learning Model (98.05% Accuracy)</option>
+                                </select>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid mt-4">
+                                <button type="submit" id="submitBtn" class="btn btn-custom">
+                                    <i class="fas fa-microscope me-2"></i>Analyze & Predict Heart Disease
+                                </button>
+                            </div>
+
+                        </form>
+
+                        <div class="text-center mt-3">
+                            <a href="{{ url_for('live') }}" class="text-decoration-none small text-primary fw-semibold">
+                                <i class="fas fa-external-link-alt me-1"></i> Open Continuous Real-Time Live Stream Mode
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <p>© 2026 Pupil Heart Disease Identification</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let cameraStream = null;
+const videoElem = document.getElementById('uploadCameraVideo');
+const canvasElem = document.getElementById('cameraCanvas');
+const fileInput = document.getElementById('fileInput');
+
+function previewImage(event) {
+    if (event.target.files && event.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(){
+            const output = document.getElementById('filePreview');
+            output.src = reader.result;
+            output.classList.remove('d-none');
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+}
+
+async function startCamera() {
+    try {
+        if (!cameraStream) {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+            });
+            videoElem.srcObject = cameraStream;
+            await videoElem.play();
+        }
+    } catch (err) {
+        console.error('Camera access failed:', err);
+        alert('Could not access your camera. Please ensure permissions are granted or use file upload.');
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+}
+
+function snapPhoto() {
+    canvasElem.width = videoElem.videoWidth || 640;
+    canvasElem.height = videoElem.videoHeight || 480;
+    const ctx = canvasElem.getContext('2d');
+    ctx.drawImage(videoElem, 0, 0, canvasElem.width, canvasElem.height);
+
+    canvasElem.toBlob(function(blob) {
+        const file = new File([blob], "pupil_capture_" + Date.now() + ".jpg", { type: "image/jpeg" });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+
+        // Show preview
+        document.getElementById('cameraPreview').src = URL.createObjectURL(blob);
+        document.getElementById('cameraActiveView').classList.add('d-none');
+        document.getElementById('cameraCapturedView').classList.remove('d-none');
+    }, 'image/jpeg', 0.95);
+}
+
+function retakePhoto() {
+    fileInput.value = '';
+    document.getElementById('cameraActiveView').classList.remove('d-none');
+    document.getElementById('cameraCapturedView').classList.add('d-none');
+}
+
+// Form validation before submit
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+    if (!fileInput.files || fileInput.files.length === 0) {
+        e.preventDefault();
+        alert('Please select an image file or capture a photo with the live camera before predicting.');
+    }
+});
+</script>
+
+</body>
+</html>

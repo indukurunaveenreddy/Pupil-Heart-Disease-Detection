@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pupil Heart Disease Identification - Live Camera Detection</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #0f172a; color: #f8fafc; }
+
+        .navbar { background: linear-gradient(90deg, #0f2027, #203a43, #2c5364); }
+        .navbar-brand { font-weight: 700; color: #fff !important; }
+        .nav-link { color: #fff !important; margin-left: 15px; }
+        .nav-link:hover { color: #00d4ff !important; }
+
+        .live-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 15px;
+        }
+
+        .camera-card {
+            background: #1e293b;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .viewport-wrapper {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #cameraFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror view for intuitive self-targeting */
+        }
+
+        /* Medical Targeting Reticle Overlay */
+        .reticle-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px;
+            height: 220px;
+            border: 2px dashed rgba(0, 212, 255, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color 0.3s;
+        }
+
+        .reticle-overlay.risk {
+            border-color: rgba(239, 68, 68, 0.9);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .reticle-overlay.safe {
+            border-color: rgba(34, 197, 94, 0.9);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+        }
+
+        .crosshair-h {
+            position: absolute;
+            width: 40px;
+            height: 2px;
+            background: rgba(0, 212, 255, 0.8);
+        }
+        .crosshair-v {
+            position: absolute;
+            width: 2px;
+            height: 40px;
+            background: rgba(0, 212, 255, 0.8);
+        }
+
+        .hud-banner {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .hud-badge {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid #334155;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .control-bar {
+            padding: 20px;
+            background: #1e293b;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            border-top: 1px solid #334155;
+        }
+
+        .btn-modern {
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .stats-panel {
+            background: #1e293b;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            height: 100%;
+        }
+
+        .status-indicator {
+            padding: 16px;
+            border-radius: 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .confidence-bar {
+            height: 10px;
+            border-radius: 5px;
+            background: #334155;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            width: 0%;
+            background: #00c6ff;
+            transition: width 0.3s, background-color 0.3s;
+        }
+
+        footer { background: #0f2027; color: white; padding: 15px; text-align: center; margin-top: 50px; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="#"><i class="fas fa-heartbeat text-danger me-2"></i>Pupil Heart AI</a>
+        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="nav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('userhome') }}">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('upload1') }}">Upload Image</a></li>
+                <li class="nav-item"><a class="nav-link active text-info" href="{{ url_for('live') }}"><i class="fas fa-camera me-1"></i>Live Stream</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container live-container">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold"><i class="fas fa-video text-info me-2"></i>Live Pupil Cardiac Screening</h2>
+        <p class="text-secondary">Position your eye within the alignment circle. The AI analyzes frames continuously using MobileNetV3.</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Live Video Viewport -->
+        <div class="col-lg-8">
+            <div class="camera-card">
+                <div class="viewport-wrapper">
+                    <video id="cameraFeed" autoplay playsinline muted></video>
+                    <canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+                    <!-- HUD Overlay -->
+                    <div class="hud-banner">
+                        <div class="hud-badge">
+                            <span class="live-dot" id="liveDot"></span>
+                            <span id="streamState">STREAM ACTIVE</span>
+                        </div>
+                        <div class="hud-badge">
+                            <i class="fas fa-brain text-info"></i>
+                            <span>MobileNetV3 AI</span>
+                        </div>
+                    </div>
+
+                    <!-- Pupil Reticle -->
+                    <div class="reticle-overlay" id="reticle">
+                        <div class="crosshair-h"></div>
+                        <div class="crosshair-v"></div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="control-bar">
+                    <button id="toggleBtn" class="btn btn-primary btn-modern" onclick="toggleDetection()">
+                        <i class="fas fa-pause" id="toggleIcon"></i>
+                        <span id="toggleText">Pause Detection</span>
+                    </button>
+
+                    <button id="snapBtn" class="btn btn-success btn-modern" onclick="captureAndGenerateReport()">
+                        <i class="fas fa-camera"></i>
+                        <span>Capture Full Report</span>
+                    </button>
+
+                    <button class="btn btn-outline-light btn-modern" onclick="switchCamera()">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Flip Camera</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Diagnostics & Stats -->
+        <div class="col-lg-4">
+            <div class="stats-panel">
+                <h5 class="fw-bold mb-3"><i class="fas fa-chart-line text-info me-2"></i>Real-Time Diagnostics</h5>
+
+                <div class="status-indicator">
+                    <small class="text-muted text-uppercase fw-semibold">Live Diagnosis</small>
+                    <h4 class="mt-2 fw-bold" id="diagResult">Align Eye in Circle</h4>
+                    <span class="badge bg-secondary" id="riskBadge">Standby</span>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">Prediction Confidence</small>
+                        <small class="fw-bold text-info" id="confPercent">0%</small>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confFill"></div>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-4 text-center">
+                    <div class="col-6">
+                        <div class="p-3 bg-dark rounded-3 border border-secondary">
+                            <small class="text-muted d-block">Heart Risk</small>
+                            <span class="fw-bold text-danger" id="heartRiskProb">--%</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-dark rounded-3 border border-secondary">
+                            <small class="text-muted d-block">No Risk</small>
+                            <span class="fw-bold text-success" id="noRiskProb">--%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-dark border-secondary p-3 small">
+                    <i class="fas fa-info-circle text-info me-1"></i>
+                    <strong>Targeting Tip:</strong> Hold device ~10-15cm from eye with adequate front lighting. Keep pupil centered inside circle.
+                </div>
+
+                <div class="d-grid mt-3">
+                    <a href="{{ url_for('upload1') }}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-folder-open me-1"></i> Switch to File Upload
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Form for submitting captured frame to full report view -->
+<form id="reportForm" action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" style="display:none;">
+    <input type="file" name="file" id="reportFileInput">
+    <input type="hidden" name="alg" value="1">
+</form>
+
+<footer>
+    <p>© 2026 Pupil Heart Disease Identification</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let videoStream = null;
+let isDetecting = true;
+let isProcessingFrame = false;
+let currentFacingMode = 'user';
+const video = document.getElementById('cameraFeed');
+const canvas = document.getElementById('hiddenCanvas');
+const ctx = canvas.getContext('2d');
+const reticle = document.getElementById('reticle');
+
+// Start Camera Feed
+async function startCamera() {
+    try {
+        if (videoStream) {
+            videoStream.getTracks().forEach(t => t.stop());
+        }
+        const constraints = {
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: currentFacingMode
+            }
+        };
+        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = videoStream;
+        await video.play();
+        startDetectionLoop();
+    } catch (err) {
+        console.error('Camera access error:', err);
+        document.getElementById('diagResult').innerText = 'Camera Access Error';
+        document.getElementById('streamState').innerText = 'CAMERA BLOCKED';
+    }
+}
+
+function switchCamera() {
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    startCamera();
+}
+
+function toggleDetection() {
+    isDetecting = !isDetecting;
+    const btn = document.getElementById('toggleBtn');
+    const icon = document.getElementById('toggleIcon');
+    const text = document.getElementById('toggleText');
+    const dot = document.getElementById('liveDot');
+
+    if (isDetecting) {
+        icon.className = 'fas fa-pause';
+        text.innerText = 'Pause Detection';
+        btn.className = 'btn btn-primary btn-modern';
+        dot.style.background = '#ef4444';
+        document.getElementById('streamState').innerText = 'STREAM ACTIVE';
+        startDetectionLoop();
+    } else {
+        icon.className = 'fas fa-play';
+        text.innerText = 'Resume Detection';
+        btn.className = 'btn btn-secondary btn-modern';
+        dot.style.background = '#eab308';
+        document.getElementById('streamState').innerText = 'DETECTION PAUSED';
+    }
+}
+
+// Continuous frame analysis loop
+async function startDetectionLoop() {
+    if (!isDetecting || !videoStream) return;
+
+    if (!isProcessingFrame && video.readyState === video.HAVE_ENOUGH_DATA) {
+        isProcessingFrame = true;
+        try {
+            canvas.width = 224;
+            canvas.height = 224;
+
+            // Crop center square to focus on pupil
+            const minDim = Math.min(video.videoWidth, video.videoHeight);
+            const startX = (video.videoWidth - minDim) / 2;
+            const startY = (video.videoHeight - minDim) / 2;
+
+            ctx.drawImage(video, startX, startY, minDim, minDim, 0, 0, 224, 224);
+            const b64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            const res = await fetch('/predict_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: b64 })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                updateUI(data);
+            }
+        } catch (err) {
+            console.warn('Frame analysis skipped:', err);
+        } finally {
+            isProcessingFrame = false;
+        }
+    }
+
+    if (isDetecting) {
+        setTimeout(startDetectionLoop, 150); // ~6.6 frames per second
+    }
+}
+
+function updateUI(data) {
+    const diag = document.getElementById('diagResult');
+    const badge = document.getElementById('riskBadge');
+    const confFill = document.getElementById('confFill');
+    const confText = document.getElementById('confPercent');
+    const hrProb = document.getElementById('heartRiskProb');
+    const nhrProb = document.getElementById('noRiskProb');
+
+    diag.innerText = data.prediction;
+    confText.innerText = data.confidence + '%';
+    confFill.style.width = data.confidence + '%';
+
+    if (data.all_confidences) {
+        hrProb.innerText = (data.all_confidences.heart_risk * 100).toFixed(1) + '%';
+        nhrProb.innerText = (data.all_confidences.no_heart_risk * 100).toFixed(1) + '%';
+    }
+
+    if (data.is_risk) {
+        badge.className = 'badge bg-danger';
+        badge.innerText = 'RISK DETECTED';
+        confFill.style.backgroundColor = '#ef4444';
+        reticle.className = 'reticle-overlay risk';
+    } else {
+        badge.className = 'badge bg-success';
+        badge.innerText = 'NORMAL';
+        confFill.style.backgroundColor = '#22c55e';
+        reticle.className = 'reticle-overlay safe';
+    }
+}
+
+// Capture current frame and submit to existing full report view
+function captureAndGenerateReport() {
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(function(blob) {
+        const file = new File([blob], "camera_capture_" + Date.now() + ".jpg", { type: "image/jpeg" });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('reportFileInput').files = dt.files;
+        document.getElementById('reportForm').submit();
+    }, 'image/jpeg', 0.95);
+}
+
+// Start camera on page load
+window.addEventListener('DOMContentLoaded', startCamera);
+window.addEventListener('beforeunload', () => {
+    if (videoStream) {
+        videoStream.getTracks().forEach(t => t.stop());
+    }
+});
+</script>
+
+</body>
+</html>
