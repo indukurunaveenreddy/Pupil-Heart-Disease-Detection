@@ -337,5 +337,5 @@ def view1(filename):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
-    print(f"[INFO] Starting Flask server on http://127.0.0.1:{port}")
-    app.run(debug=True, threaded=False, host="127.0.0.1", port=port)
+    print(f"[INFO] Starting Flask server on http://0.0.0.0:{port}")
+    app.run(debug=False, threaded=False, host="0.0.0.0", port=port)
