@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 from flask import Flask, request, render_template, send_from_directory, jsonify, Response
+from werkzeug.utils import secure_filename
 import base64
 import pandas as pd
 import seaborn as sns
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.applications import MobileNetV3Small
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import *
+from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.applications.mobilenet_v3 import preprocess_input
 from sklearn.model_selection import train_test_split
 import numpy as np
@@ -25,9 +27,18 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'pupil-heart-disease-detection-secret-key-2026')
+
+# Production admin credentials (configurable via environment variables)
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin')
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(APP_ROOT, 'users.db')
+# DB_PATH can be overridden to a persistent mount path (e.g. /var/data/users.db) on Render
+DB_PATH = os.environ.get('DB_PATH', os.path.join(APP_ROOT, 'users.db'))
+
+# Ensure runtime directories exist
+os.makedirs(os.path.join(APP_ROOT, 'images'), exist_ok=True)
 
 # Map dataset folder names to human-readable predictions
 classes_map = {
@@ -53,6 +64,14 @@ def init_db():
         ph TEXT,
         gender TEXT
     )''')
+    # Preserve existing user accounts across ephemeral container deploys
+    initial_users = [
+        ('naveen', 'indukurun@gmail.com', 'naveen', '2004-10-14', 'pulivendula', '8639866865', 'male'),
+        ('Doctor John', 'drjohn@example.com', 'doctorpass', '1990-01-01', 'Hospital St 123', '9876543210', 'Male')
+    ]
+    for user_data in initial_users:
+        conn.execute('''INSERT OR IGNORE INTO ureg (name, email, pass, dob, addr, ph, gender)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)''', user_data)
     conn.commit()
     conn.close()
 
@@ -79,12 +98,20 @@ def adminhome():
 def admin():
     return render_template("admin.html", msg='Successfully Registered!!')
 
+@app.route('/health')
+def health():
+    return jsonify({
+        'status': 'ok',
+        'model_loaded': loaded_model is not None,
+        'app': 'pupil-heart-disease-detection'
+    }), 200
+
 @app.route('/adminlog', methods=['POST', 'GET'])
 def adminlog():
     if request.method == "POST":
         username = request.form['uname']
         password1 = request.form['pass']
-        if username == 'admin' and password1 == 'admin':
+        if username == ADMIN_USERNAME and password1 == ADMIN_PASSWORD:
             return render_template('adminhome.html', msg="Login Success")
         else:
             return render_template('admin.html', msg="Login Failure!!!")
@@ -226,8 +253,15 @@ def upload():
         m = int(request.form['alg'])
 
         myfile = request.files['file']
-        fn = myfile.filename
-        mypath = os.path.join('images', fn)
+        raw_fn = myfile.filename or 'upload.jpg'
+        safe_fn = secure_filename(raw_fn)
+        if not safe_fn:
+            safe_fn = f"upload_{uuid4().hex[:8]}.jpg"
+        fn = safe_fn
+
+        images_dir = os.path.join(APP_ROOT, 'images')
+        os.makedirs(images_dir, exist_ok=True)
+        mypath = os.path.join(images_dir, fn)
         myfile.save(mypath)
 
         print(f"Saved uploaded file: {mypath}")

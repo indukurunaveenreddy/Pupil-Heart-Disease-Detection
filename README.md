@@ -102,30 +102,57 @@ gunicorn app:app --bind 0.0.0.0:5001 --workers 1 --timeout 120
 
 This project is pre-configured for one-click deployment on [Render](https://render.com).
 
-### Step-by-step Render Deployment
-
-1. **Push to GitHub** (see Git commands below)
-2. Go to [https://dashboard.render.com](https://dashboard.render.com) → **New** → **Web Service**
-3. Connect your GitHub account and select the `Pupil-Heart-Disease-Detection` repository
-4. Render will auto-detect `render.yaml` and pre-fill settings:
+### Option A: Using Render Blueprint (`render.yaml`) — Recommended
+1. Go to [Render Dashboard](https://dashboard.render.com/) → Click **New +** → **Blueprint**.
+2. Connect your GitHub repository `indukurunaveenreddy/Pupil-Heart-Disease-Detection`.
+3. Render reads `render.yaml` and configures everything automatically:
+   - **Service Name**: `pupil-heart-disease-detection`
+   - **Environment**: Python 3.11
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120`
-   - **Runtime**: Python 3.11
-   - **Plan**: Free
-5. Click **Create Web Service** — Render will build and deploy automatically
+   - **Health Check Path**: `/health`
+   - **Environment Variables**:
+     - `PYTHON_VERSION`: `3.11.0`
+     - `SECRET_KEY`: Auto-generated random secret
+     - `ADMIN_USERNAME`: `admin`
+     - `ADMIN_PASSWORD`: `admin` (or your custom password)
+4. Click **Apply** to deploy.
 
-### ⚠️ Important: SQLite on Render (Ephemeral Filesystem)
-
-Render's free tier uses an **ephemeral filesystem** — the `users.db` SQLite database is **recreated on every deploy** (registered users will be lost). This is expected behavior on free tier.
-
-**Options to persist data:**
-- **Render Disk** (paid): Add a persistent disk mounted at `/data` and set `DB_PATH=/data/users.db`
-- **Migrate to PostgreSQL**: Use Render's free PostgreSQL addon and switch to `psycopg2`
-- **For demo/testing**: SQLite is fine — the app auto-creates the DB on startup
+### Option B: Manual Web Service Creation
+1. Go to [Render Dashboard](https://dashboard.render.com/) → **New +** → **Web Service**.
+2. Connect your GitHub repository `indukurunaveenreddy/Pupil-Heart-Disease-Detection`.
+3. Set the following fields:
+   - **Name**: `pupil-heart-disease-detection`
+   - **Region**: Oregon (US West) or Frankfurt (EU)
+   - **Branch**: `main`
+   - **Root Directory**: *(leave blank)*
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120`
+   - **Instance Type**: `Free`
+4. Expand **Advanced**:
+   - **Health Check Path**: `/health`
+   - **Auto-Deploy**: `Yes`
+   - **Environment Variables**:
+     - `PYTHON_VERSION`: `3.11.0`
+     - `SECRET_KEY`: *(click Generate or enter a random string)*
+     - `ADMIN_USERNAME`: `admin`
+     - `ADMIN_PASSWORD`: *(choose a strong password)*
+5. Click **Create Web Service**.
 
 ---
 
-## 🔧 Git Commands — Push to GitHub
+### 💾 Database Persistence & User Accounts
+
+- **Automatic Seeding**: The app automatically initializes `users.db` and seeds pre-existing user accounts (`naveen`, `drjohn`) on startup so test and demo accounts are **never lost** when the container boots.
+- **Render Free Tier**: Uses an ephemeral filesystem. Newly registered accounts created during a session will be reset when the free container spins down or redeploys.
+- **Permanent Persistence (Optional)**:
+  - Add a **Render Persistent Disk** mounted at `/data` (available on Starter plan) and set `DB_PATH=/data/users.db` in Environment Variables.
+  - Or connect an external PostgreSQL / Supabase instance.
+
+---
+
+## 🔧 Git Commands — Push Updates to GitHub
 
 ```bash
 # Check current status
@@ -135,7 +162,7 @@ git status
 git add .
 
 # Commit
-git commit -m "deploy: fix .gitignore, update requirements for production"
+git commit -m "deploy: update app with healthcheck, environment secrets, and db seeding"
 
 # Push to GitHub
 git push origin main

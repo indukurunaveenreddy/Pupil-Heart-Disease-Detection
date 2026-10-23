@@ -49,8 +49,8 @@ jobs:
         PID=$!
         echo "Waiting for Flask to start (model loading may take up to 60s)..."
         for i in $(seq 1 30); do
-          if curl --silent --fail http://127.0.0.1:5001/ > /dev/null 2>&1; then
-            echo "[PASS] Web server responded 200 OK (attempt $i)"
+          if curl --silent --fail http://127.0.0.1:5001/health > /dev/null 2>&1; then
+            echo "[PASS] Web server healthcheck responded 200 OK (attempt $i)"
             kill $PID
             exit 0
           fi
