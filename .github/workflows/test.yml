@@ -1,0 +1,53 @@
+name: Run App Tests & Model Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Verify Model Loading & Inference
+      run: |
+        python -c "
+        import cv2, numpy as np, os
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.applications.mobilenet_v3 import preprocess_input
+
+        model = load_model('alg/MobileNet_v3.keras')
+        print('[PASS] Model loaded successfully. Output shape:', model.output_shape)
+        
+        # Test synthetic frame inference
+        dummy_frame = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+        x = preprocess_input(np.array([dummy_frame], dtype=np.float32))
+        res = model.predict(x)
+        print('[PASS] Inference succeeded. Predictions:', res)
+        "
+
+    - name: Test Flask App Startup & Healthcheck
+      run: |
+        PORT=5001 python app.py &
+        PID=$!
+        sleep 5
+        curl --fail http://127.0.0.1:5001/ || exit 1
+        echo "[PASS] Web server responded 200 OK"
+        kill $PID

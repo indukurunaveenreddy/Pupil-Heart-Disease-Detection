@@ -1,0 +1,20 @@
+{
+  "name": "Pupil Heart Disease Detection",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "forwardPorts": [5001],
+  "portsAttributes": {
+    "5001": {
+      "label": "Pupil Heart AI Web App",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt",
+  "postStartCommand": "python3 app.py",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ]
+    }
+  }
+}

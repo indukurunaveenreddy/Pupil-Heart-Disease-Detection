@@ -1,6 +1,11 @@
 # 👁️ Pupil Heart Disease Detection using Deep Learning & Live AI Camera
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/indukurunaveenreddy/Pupil-Heart-Disease-Detection)
+[![CI](https://github.com/indukurunaveenreddy/Pupil-Heart-Disease-Detection/actions/workflows/test.yml/badge.svg)](https://github.com/indukurunaveenreddy/Pupil-Heart-Disease-Detection/actions)
+
 An AI-powered web application that identifies heart disease risk through non-invasive pupil image analysis using **MobileNetV3** transfer learning. Features both traditional image upload analysis and **real-time live camera screening** with automated reticle targeting.
+
+> **💡 Run directly in your browser on GitHub**: Click the **[Open in GitHub Codespaces](https://codespaces.new/indukurunaveenreddy/Pupil-Heart-Disease-Detection)** button above to launch and test this application in the cloud with zero local setup!
 
 ---
 
